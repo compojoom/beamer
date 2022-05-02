@@ -7,6 +7,7 @@ from brownie import accounts
 from eth_utils import to_checksum_address
 
 import beamer.agent
+from beamer.chain import _transact
 from beamer.tests.util import EventCollector, HTTPProxy, earnings, make_request
 
 
@@ -117,18 +118,10 @@ def test_challenge_2(request_manager, token, config):
     assert charlie_earnings() == -claim.challengerStake
 
 
-# Scenario 3:
-#
-# Bob              Charlie
-# --------------------------
-#                  claim
-# challenge
-#
-# Winner: Bob
-#
-# Note: Bob is not filling the request here, merely noticing the dishonest
-# claim and challenging it.
-def test_challenge_3(request_manager, fill_manager, token, config):
+@pytest.mark.parametrize("brownie_contract", [True, False])
+def test_brownie_contract_interaction(
+    request_manager, fill_manager, token, config, brownie_contract
+):
     target_address = accounts[8]
     requester, charlie = accounts[:2]
 
@@ -146,26 +139,26 @@ def test_challenge_3(request_manager, fill_manager, token, config):
         request_manager.claimRequest(request_id, 0, {"from": charlie, "value": stake})
 
         collector = EventCollector(request_manager, "ClaimMade")
-        collector.next_event()
-
-        agent.start()
-
-        # Get Bob's challenge.
         claim = collector.next_event()
         assert claim is not None
-        assert claim.challengerStake > claim.claimerStake and claim.challenger == agent.address
+        # agent.start()
 
-        # Ensure that Bob did not fill the request.
-        assert EventCollector(fill_manager, "RequestFilled").next_event(wait_time=2) is None
+        balance_before = w3.eth.get_balance(agent.address)
+        print(f"Balance before: {balance_before}")
+        if brownie_contract:
+            request_manager.challengeClaim(
+                claim.claimId, {"from": agent.address, "value": stake + 1}
+            )
+        else:
+            request_manager = agent.context.request_manager
+            _transact(request_manager.functions.challengeClaim(claim.claimId), value=stake + 1)
 
-        brownie.chain.mine(timestamp=claim.termination)
-        request_manager.withdraw(claim.claimId, {"from": agent.address})
-
-        agent.stop()
-        agent.wait()
-
-    assert agent_earnings() == claim.claimerStake
-    assert charlie_earnings() == -claim.claimerStake
+        claim_event = collector.next_event()
+        assert claim_event is not None
+        balance_after = w3.eth.get_balance(agent.address)
+        print(f"Balance after: {balance_after}")
+        print(f"DIFFERENCE: {balance_before - balance_after}")
+        return
 
 
 # Scenario 4:
