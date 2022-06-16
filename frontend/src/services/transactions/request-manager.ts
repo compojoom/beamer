@@ -112,13 +112,21 @@ export async function checkIfRequestHasExpired(
   requestAccount: string,
 ): Promise<boolean> {
   const request = await getRequestData(rpcUrl, requestManagerAddress, requestIdentifier);
+  console.log('Current request data:', request);
   const provider = new JsonRpcProvider(rpcUrl);
   const block = await provider.getBlock('latest');
+  console.log('Current block:', block);
   const validityExpired = request.validUntil.lt(block.timestamp);
   const noActiveClaims = request.activeClaims.eq(0);
   const notWithdrawnBySomeoneElse =
     request.withdrawInfo.filler.toLowerCase() == '0x0000000000000000000000000000000000000000' ||
     request.withdrawInfo.filler.toLowerCase() == requestAccount.toLowerCase();
+  console.log(
+    'Validity Expired | NoActiveClaims | notWithdrawnBySomeoneElse:',
+    validityExpired,
+    noActiveClaims,
+    notWithdrawnBySomeoneElse,
+  );
 
   return validityExpired && noActiveClaims && notWithdrawnBySomeoneElse;
 }
@@ -133,6 +141,7 @@ export function failWhenRequestExpires(
 
   const promise = new Promise<void>((_, reject) => {
     const checkExpiration = async () => {
+      console.log('Check for transfer expiration.');
       const hasExpired = await checkIfRequestHasExpired(
         rpcUrl,
         requestManagerAddress,
@@ -140,7 +149,10 @@ export function failWhenRequestExpires(
         requestAccount,
       );
 
+      console.log('Has expired?', hasExpired);
+
       if (hasExpired) {
+        console.log('Clean up and throw expiration error.');
         provider.removeAllListeners();
         reject(new RequestExpiredError());
       }
