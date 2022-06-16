@@ -20,7 +20,7 @@
       "requestManagerAddress": "0x34040c8f02Bb178f6D8dCe9C3F497da6bB986bEd",
       "fillManagerAddress": "0xc0810b2a924dED2e47DD724E411BB430856e4dDC",
       "explorerTransactionUrl": "https://optimistic.etherscan.io/tx/",
-      "rpcUrl": "https://mainnet.optimism.io",
+      "rpcUrl": "https://opt-mainnet.g.alchemy.com/v2/5qJAmya6vwriDA4CsLaYzwxS5WY8gqxv",
       "name": "Optimism",
       "tokens": [
         {
